@@ -1,0 +1,4 @@
+import { NextRequest } from "next/server";import { getOrderBook } from "@/lib/binance";import { handle } from "@/lib/api";import { errors } from "@/lib/errors";import { z } from "zod";const Query = z.object({  symbol: z.string().min(3).max(40),  market: z.enum(["spot", "futures"]),  limit: z.coerce.number().int().min(5).max(5000).optional(),});export async function GET(req: NextRequest) {  return handle(async () => {    const parsed = Query.safeParse(Object.fromEntries(req.nextUrl.searchParams));    if (!parsed.success) throw errors.badRequest("invalid query", parsed.error.flatten());    const book = await getOrderBook(parsed.data.symbol, parsed.data.market, parsed.data.limit ?? 50);    return book;  });}
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
