@@ -48,12 +48,15 @@ jobs:
           SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING: 1
 
       # next build --standalone produces .next/standalone — a self-contained
-      # server that needs NO separate node_modules copy. We add the static
-      # assets and public folder, then zip only that folder (~80 MB vs 500 MB).
+      # server that needs NO separate node_modules copy. We add static
+      # assets and public folder, plus a .deployment file to instruct Azure Kudu
+      # to skip Oryx build on deployment.
       - name: Prepare standalone deployment package
         run: |
           cp -r public .next/standalone/public
           cp -r .next/static .next/standalone/.next/static
+          echo "[config]" > .next/standalone/.deployment
+          echo "SCM_DO_BUILD_DURING_DEPLOYMENT = false" >> .next/standalone/.deployment
 
       - name: Zip standalone folder for deployment
         run: |
@@ -79,34 +82,7 @@ jobs:
         with:
           name: node-app
 
-      # Tell Azure NOT to re-run Oryx build on our pre-built package.
-      # SCM_DO_BUILD_DURING_DEPLOYMENT=false + startup command set here.
-      - name: Configure Azure App Service settings
-        uses: azure/appservice-settings@v1
-        with:
-          app-name: 'cryptowatchpro'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_CRYPTOWATCHPRO }}
-          app-settings-json: |
-            [
-              { "name": "SCM_DO_BUILD_DURING_DEPLOYMENT", "value": "false", "slotSetting": false },
-              { "name": "WEBSITE_RUN_FROM_PACKAGE",        "value": "0",     "slotSetting": false },
-              { "name": "NEXT_PUBLIC_SUPABASE_URL",         "value": "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}",   "slotSetting": false },
-              { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY",    "value": "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}", "slotSetting": false },
-              { "name": "NEXT_PUBLIC_APP_URL",              "value": "https://cryptowatchpro.azurewebsites.net", "slotSetting": false },
-              { "name": "SUPABASE_SERVICE_ROLE_KEY",        "value": "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}", "slotSetting": false },
-              { "name": "ANTHROPIC_API_KEY",                "value": "${{ secrets.ANTHROPIC_API_KEY }}",         "slotSetting": false },
-              { "name": "ANTHROPIC_MODEL",                  "value": "claude-3-5-sonnet-latest",                 "slotSetting": false },
-              { "name": "RESEND_API_KEY",                   "value": "${{ secrets.RESEND_API_KEY }}",            "slotSetting": false },
-              { "name": "ALERT_FROM_EMAIL",                 "value": "${{ secrets.ALERT_FROM_EMAIL }}",          "slotSetting": false },
-              { "name": "CRON_SECRET",                      "value": "${{ secrets.CRON_SECRET }}",               "slotSetting": false }
-            ]
-          general-settings-json: |
-            {
-              "appCommandLine": "node server.js"
-            }
-
-      # Deploy the zip directly — azure/webapps-deploy handles zip files natively.
-      # Do NOT unzip first: that would deploy release.zip + extracted contents (2x size).
+      # Deploy the zip directly using publish-profile.
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
