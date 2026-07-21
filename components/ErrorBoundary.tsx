@@ -1,8 +1,8 @@
 "use client";
 
 // React error boundary. Wraps each panel so a crash in one
-// component doesn't take the whole page down. Reports the error
-// to the console; in production you'd forward to Sentry here.
+// component doesn't take the whole page down. Forwards errors to
+// Sentry in production; falls back to console.error if unavailable.
 
 import { Component, type ReactNode } from "react";
 
@@ -16,8 +16,16 @@ export class ErrorBoundary extends Component<{ children: ReactNode; label?: stri
   }
 
   componentDidCatch(error: Error) {
-    // Replace with a real error reporter in production.
+    // Forward to Sentry if available, always log to console.
     console.error(`[ErrorBoundary${this.props.label ? `:${this.props.label}` : ""}]`, error);
+    try {
+      const Sentry = (globalThis as any).__SENTRY__;
+      if (Sentry?.captureException) {
+        Sentry.captureException(error);
+      }
+    } catch {
+      // Sentry not available — already logged above.
+    }
   }
 
   reset = () => this.setState({ error: null });

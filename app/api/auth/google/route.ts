@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export async function GET(req: NextRequest) {
-  const supabase = getServerSupabase();
+  const supabase = await getServerSupabase();
   const next = req.nextUrl.searchParams.get("next") ?? "/";
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin;
   const { data, error } = await supabase.auth.signInWithOAuth({

@@ -1,4 +1,91 @@
-import { NextRequest } from "next/server";import { requireUser } from "@/lib/auth";import { getServerSupabase } from "@/lib/supabase/server";import { handle } from "@/lib/api";import { errors } from "@/lib/errors";import { z } from "zod";import type { Alert } from "@/types";const InsertBody = z.object({  symbol: z.string().min(3).max(40),  marketType: z.enum(["spot", "futures"]).default("spot"),  condition: z.enum(["above", "below", "pct_change"]),  threshold: z.coerce.number().positive(),  pctWindow: z.enum(["1h", "24h", "7d"]).optional().nullable(),  delivery: z.enum(["toast", "email", "toast+email"]).default("toast+email"),});export async function GET() {  return handle(async () => {    const user = await requireUser();    const supabase = getServerSupabase();    const { data, error } = await supabase      .from("alerts")      .select("*")      .eq("user_id", user.id)      .order("created_at", { ascending: false });    if (error) throw errors.internal(error.message);    const items: Alert[] = (data ?? []).map((r) => ({      id: r.id,      symbol: r.symbol,      marketType: r.market_type,      condition: r.condition,      threshold: Number(r.threshold),      pctWindow: r.pct_window,      active: r.active,      triggeredAt: r.triggered_at,      triggeredPrice: r.triggered_price != null ? Number(r.triggered_price) : null,      delivery: r.delivery,      createdAt: r.created_at,    }));    return { items };  });}export async function POST(req: NextRequest) {  return handle(async () => {    const user = await requireUser();    const body = InsertBody.safeParse(await req.json().catch(() => ({})));    if (!body.success) throw errors.badRequest("invalid body", body.error.flatten());    const supabase = getServerSupabase();    const { data, error } = await supabase      .from("alerts")      .insert({        user_id: user.id,        symbol: body.data.symbol.toUpperCase(),        market_type: body.data.marketType,        condition: body.data.condition,        threshold: body.data.threshold,        pct_window: body.data.pctWindow ?? null,        delivery: body.data.delivery,        active: true,      })      .select("*")      .single();    if (error) throw errors.internal(error.message);    return {      item: {        id: data.id,        symbol: data.symbol,        marketType: data.market_type,        condition: data.condition,        threshold: Number(data.threshold),        pctWindow: data.pct_window,        active: data.active,        triggeredAt: data.triggered_at,        triggeredPrice: data.triggered_price != null ? Number(data.triggered_price) : null,        delivery: data.delivery,        createdAt: data.created_at,      } satisfies Alert,    };  });}
+import { NextRequest } from "next/server";
+import { requireUser } from "@/lib/auth";
+import { getServerSupabase } from "@/lib/supabase/server";
+import { handle } from "@/lib/api";
+import { errors } from "@/lib/errors";
+import { z } from "zod";
+import type { Alert } from "@/types";
 
-export const dynamic = 'force-dynamic';
+const InsertBody = z.object({
+  symbol: z.string().min(3).max(40),
+  marketType: z.enum(["spot", "futures"]).default("spot"),
+  condition: z.enum(["above", "below", "pct_change"]),
+  threshold: z.coerce.number().positive(),
+  pctWindow: z.enum(["1h", "24h", "7d"]).optional().nullable(),
+  delivery: z.enum(["toast", "email", "toast+email"]).default("toast+email"),
+});
+
+export async function GET() {
+  return handle(async () => {
+    const user = await requireUser();
+    const supabase = await getServerSupabase();
+    const { data, error } = await supabase
+      .from("alerts")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw errors.internal(error.message);
+
+    const items: Alert[] = (data ?? []).map((r) => ({
+      id: r.id,
+      symbol: r.symbol,
+      marketType: r.market_type,
+      condition: r.condition,
+      threshold: Number(r.threshold),
+      pctWindow: r.pct_window,
+      active: r.active,
+      triggeredAt: r.triggered_at,
+      triggeredPrice: r.triggered_price != null ? Number(r.triggered_price) : null,
+      delivery: r.delivery,
+      createdAt: r.created_at,
+    }));
+
+    return { items };
+  });
+}
+
+export async function POST(req: NextRequest) {
+  return handle(async () => {
+    const user = await requireUser();
+    const body = InsertBody.safeParse(await req.json().catch(() => ({})));
+    if (!body.success) throw errors.badRequest("invalid body", body.error.flatten());
+
+    const supabase = await getServerSupabase();
+    const { data, error } = await supabase
+      .from("alerts")
+      .insert({
+        user_id: user.id,
+        symbol: body.data.symbol.toUpperCase(),
+        market_type: body.data.marketType,
+        condition: body.data.condition,
+        threshold: body.data.threshold,
+        pct_window: body.data.pctWindow ?? null,
+        delivery: body.data.delivery,
+        active: true,
+      })
+      .select("*")
+      .single();
+
+    if (error) throw errors.internal(error.message);
+
+    return {
+      item: {
+        id: data.id,
+        symbol: data.symbol,
+        marketType: data.market_type,
+        condition: data.condition,
+        threshold: Number(data.threshold),
+        pctWindow: data.pct_window,
+        active: data.active,
+        triggeredAt: data.triggered_at,
+        triggeredPrice: data.triggered_price != null ? Number(data.triggered_price) : null,
+        delivery: data.delivery,
+        createdAt: data.created_at,
+      } satisfies Alert,
+    };
+  });
+}
+
+export const dynamic = "force-dynamic";
 export const revalidate = 0;

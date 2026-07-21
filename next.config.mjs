@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -24,4 +26,14 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// Wrap with Sentry for error monitoring, source map upload, and
+// performance tracing. The DSN, org, and project are set via env vars.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG || "",
+  project: process.env.SENTRY_PROJECT || "",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  tunnelRoute: "/monitoring",
+  hideSourceMaps: true,
+  disableLogger: true,
+});

@@ -46,13 +46,13 @@ describe("/api/alerts", () => {
   it("DELETE removes the row", async () => {
     const c = chain({ error: null });
     (getServerSupabase as any).mockReturnValue({ from: () => c });
-    const res = await DELETE(makeReq("http://localhost/api/alerts/a1") as any, { params: { id: "a1" } });
+    const res = await DELETE(makeReq("http://localhost/api/alerts/a1") as any, { params: Promise.resolve({ id: "a1" }) });
     expect(res.status).toBe(200);
   });
 
   it("PATCH on nothing returns 400", async () => {
     const req = makeReq("http://localhost/api/alerts/a1", { method: "PATCH", body: JSON.stringify({}) });
-    const res = await PATCH(req as any, { params: { id: "a1" } });
+    const res = await PATCH(req as any, { params: Promise.resolve({ id: "a1" }) });
     expect(res.status).toBe(400);
   });
 });

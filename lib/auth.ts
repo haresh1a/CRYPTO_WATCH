@@ -5,7 +5,7 @@ import { getServerSupabase } from "./supabase/server";
 import type { User } from "@supabase/supabase-js";
 
 export async function getCurrentUser(): Promise<User | null> {
-  const supabase = getServerSupabase();
+  const supabase = await getServerSupabase();
   const { data } = await supabase.auth.getUser();
   return data.user;
 }

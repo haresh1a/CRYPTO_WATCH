@@ -1,6 +1,7 @@
 // Typed error helpers. Every API route should `throw new ApiError(...)`
 // for known failure cases and let the global handler turn it into a
 // clean JSON response. Anything else is treated as a 500.
+// Unhandled errors are forwarded to Sentry for monitoring.
 
 export class ApiError extends Error {
   status: number;
@@ -36,7 +37,16 @@ export function errorResponse(err: unknown): { status: number; body: ApiErrorRes
     };
   }
   // Don't leak internal error messages to the client.
+  // Forward unexpected errors to Sentry before returning a generic 500.
   console.error("[api] unhandled", err);
+  try {
+    import("@sentry/nextjs").then(
+      (Sentry) => Sentry.captureException(err),
+      () => { /* Sentry not available */ },
+    );
+  } catch {
+    // Sentry import failed — already logged above.
+  }
   return {
     status: 500,
     body: { error: { code: "internal", message: "Internal error" } },

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     // Best-effort usage log. Don't fail the request on a DB hiccup.
     try {
-      const supabase = getServerSupabase();
+      const supabase = await getServerSupabase();
       await supabase.from("ai_usage").insert({
         user_id: user.id,
         symbol: symbol.toUpperCase(),

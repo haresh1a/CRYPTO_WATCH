@@ -39,3 +39,14 @@ next-env.d.ts
 
 # logs
 *.log
+
+# runtime / temp files
+nul
+ruvector.db
+alerts-raw.txt
+check-alerts-raw.txt
+.claude-flow/daemon-state.json
+.claude-flow/daemon.pid
+.claude-flow/harness-active-policy.json
+.claude-flow/metrics/
+.freebuff/
