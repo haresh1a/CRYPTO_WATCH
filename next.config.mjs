@@ -2,6 +2,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Standalone output bundles only the necessary node_modules so the
+  // deployment package is ~80 MB instead of 500 MB (no full node_modules copy).
+  output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
@@ -26,14 +29,17 @@ const nextConfig = {
   },
 };
 
-// Wrap with Sentry for error monitoring, source map upload, and
-// performance tracing. The DSN, org, and project are set via env vars.
+// Wrap with Sentry for error monitoring and performance tracing.
+// Source map upload is disabled — Azure Free tier has limited disk space.
 export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG || "",
   project: process.env.SENTRY_PROJECT || "",
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
+  silent: true,
+  widenClientFileUpload: false,
   tunnelRoute: "/monitoring",
   hideSourceMaps: true,
   disableLogger: true,
+  sourcemaps: {
+    disable: true,
+  },
 });

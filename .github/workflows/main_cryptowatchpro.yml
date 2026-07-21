@@ -33,7 +33,7 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Build Next.js app
+      - name: Build Next.js app (standalone output)
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -45,12 +45,20 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          # Suppress Sentry source map warnings during CI build
           SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING: 1
 
-      # Zip everything needed to run on Azure (built output + runtime deps)
-      - name: Zip artifact for deployment
-        run: zip -r release.zip . -x "*.git*" -x "node_modules/.cache/*" -x "*.tsbuildinfo"
+      # next build --standalone produces .next/standalone — a self-contained
+      # server that needs NO separate node_modules copy. We add the static
+      # assets and public folder, then zip only that folder (~80 MB vs 500 MB).
+      - name: Prepare standalone deployment package
+        run: |
+          cp -r public .next/standalone/public
+          cp -r .next/static .next/standalone/.next/static
+
+      - name: Zip standalone folder for deployment
+        run: |
+          cd .next/standalone
+          zip -r ../../release.zip . -x "*.map"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
